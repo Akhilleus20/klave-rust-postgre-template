@@ -1,0 +1,12 @@
+package component:klave-ai-rag;
+
+/// An example world for the component to target.
+world klave-rust-postgre-template {
+    export register-routes: func();
+
+    export sql-create: func(cmd: string);
+    export sql-delete: func(cmd: string);
+    export sql-list: func(cmd: string);
+    export sql-query: func(cmd: string);
+    export sql-execute: func(cmd: string);
+}

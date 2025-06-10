@@ -1,0 +1,14 @@
+{
+    "version": "1",
+    "branches": [
+      "*"
+    ],
+    "applications": [
+      {
+        "name": "klave-rust-postgre-template",
+        "description": "A Rust template to target a PostgreSQL database.",
+        "version": "0.1.0",
+        "rootDir": "/apps/klave-rust-postgre-template"
+      }
+    ]
+  }
