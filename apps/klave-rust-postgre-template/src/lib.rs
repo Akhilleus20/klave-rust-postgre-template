@@ -3,6 +3,7 @@ mod bindings;
 
 use bindings::Guest;
 use klave;
+use serde_json::Value;
 
 pub mod database;
 
@@ -120,7 +121,7 @@ impl Guest for Component {
             }
         };
 
-        match client.query(&input.input) {
+        match client.query_and_format::<Vec<Vec<Value>>>(&input.input) {
             Ok(result) => {
                 let _ = klave::notifier::send_json(&result);
             },

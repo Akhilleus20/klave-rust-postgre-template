@@ -134,9 +134,26 @@ pub struct Client {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Field {
+    pub name: String,
+    #[serde(rename = "type")] // "type" is a reserved keyword in Rust, so we rename it
+    pub field_type: u32,
+    pub size: u64,
+    pub scale: u32,
+    pub nullable: bool,
+    pub description: Option<String>, // Use Option<String> for nullable fields
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryClient {
     pub database_id: String,
     pub input: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostGreResponse<T> {
+    pub fields: Vec<Field>,
+    pub resultset: T, // Use Vec<Vec<Value>> for the varying resultset
 }
 
 
@@ -232,6 +249,29 @@ impl Client {
             }
         }
     }
+
+    pub fn query_and_format<T>(&self, query: &str) -> Result<T, Box<dyn std::error::Error>>
+    where
+        T: for<'de> serde::Deserialize<'de>,
+    {
+        match klave::sql::query(&self.opaque_handle, query) {
+            Ok(result) => {
+                let response = match serde_json::from_str::<PostGreResponse<T>>(&result) {
+                    Ok(res) => res.resultset,
+                    Err(e) => {
+                        klave::notifier::send_string(&format!("Failed to parse query result: {}", e));
+                        return Err(e.into());
+                    }
+                };
+                Ok(response)
+            },
+            Err(err) => {
+                klave::notifier::send_string(&format!("Query failed: {}", err));
+                Err(err.into())
+            }
+        }
+    }
+
     pub fn execute(&self, query: &str) -> Result<String, Box<dyn std::error::Error>> {
         match klave::sql::execute(&self.opaque_handle, query) {
             Ok(result) => Ok(result),
@@ -240,5 +280,76 @@ impl Client {
                 Err(err.into())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::Value;
+
+    use super::*;
+
+    //Example of answer from the PostGreSql service
+    #[test]
+    fn test_deserialization() {
+        let json_data = r#"
+        {
+            "fields": [
+                {
+                    "name": "product_id",
+                    "type": 3,
+                    "size": 18446744073709551615,
+                    "scale": 0,
+                    "nullable": true,
+                    "description": null
+                },
+                {
+                    "name": "name",
+                    "type": 12,
+                    "size": 104,
+                    "scale": 0,
+                    "nullable": true,
+                    "description": null
+                },
+                {
+                    "name": "price",
+                    "type": 15,
+                    "size": 655366,
+                    "scale": 0,
+                    "nullable": true,
+                    "description": null
+                }
+            ],
+            "resultset": [
+                [
+                    1,
+                    "Laptop",
+                    "1200.00"
+                ],
+                [
+                    2,
+                    "Mouse",
+                    "25.50"
+                ]
+            ]
+        }
+        "#;
+
+        let response: PostGreResponse<Vec<Vec<Value>>> = serde_json::from_str(json_data).expect("Failed to deserialize JSON");
+
+        // You can now access the data
+        println!("{:?}", response);
+
+        // Example of accessing fields
+        assert_eq!(response.fields.len(), 3);
+        assert_eq!(response.fields[0].name, "product_id");
+        assert_eq!(response.fields[0].field_type, 3);
+        assert_eq!(response.fields[0].description, None);
+
+        // Example of accessing resultset
+        assert_eq!(response.resultset.len(), 2);
+        assert_eq!(response.resultset[0][0], Value::from(1));
+        assert_eq!(response.resultset[0][1], Value::String("Laptop".to_string()));
+        assert_eq!(response.resultset[0][2], Value::String("1200.00".to_string()));
     }
 }

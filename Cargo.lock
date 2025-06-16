@@ -66,15 +66,15 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
 name = "klave"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3573eb7dfac7eaf322103e8bfbfb9195ed6b52833e67e19449bb3e89e82c201"
+checksum = "0cacd70e569473c0e550304e650f69db578fad5f12905255b8afc039f9086274"
 dependencies = [
  "base64",
  "http",
  "serde",
  "serde_json",
- "wit-bindgen-rt 0.39.0",
+ "wit-bindgen-rt 0.42.1",
 ]
 
 [[package]]
@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "wit-bindgen-rt"
-version = "0.39.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
+checksum = "051105bab12bc78e161f8dfb3596e772dd6a01ebf9c4840988e00347e744966a"
 dependencies = [
  "bitflags",
 ]
