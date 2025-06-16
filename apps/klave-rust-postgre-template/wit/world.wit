@@ -8,5 +8,6 @@ world klave-rust-postgre-template {
     export sql-delete: func(cmd: string);
     export sql-list: func(cmd: string);
     export sql-query: func(cmd: string);
+    export sql-query-with-props: func(cmd: string);
     export sql-execute: func(cmd: string);
 }

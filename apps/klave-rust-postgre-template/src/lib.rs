@@ -15,6 +15,7 @@ impl Guest for Component {
         klave::router::add_user_transaction(&String::from("sql_delete"));
         klave::router::add_user_query(&String::from("sql_list"));
         klave::router::add_user_query(&String::from("sql_query"));
+        klave::router::add_user_query(&String::from("sql_query_with_props"));
         klave::router::add_user_query(&String::from("sql_execute"));
 
         klave::router::add_user_query(&String::from("document_create"));
@@ -122,6 +123,43 @@ impl Guest for Component {
         };
 
         match client.query_and_format::<Vec<Vec<Value>>>(&input.input) {
+            Ok(result) => {
+                let _ = klave::notifier::send_json(&result);
+                return;
+            },
+            Err(err) => {
+                klave::notifier::send_string(&format!("Query failed: {}", err));
+                return;
+            }
+        }
+    }
+
+    fn sql_query_with_props(cmd: String) {
+        let input: database::QueryClient = match serde_json::from_str(&cmd) {
+            Ok(input) => input,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Invalid input: {}", err));
+                return;
+            }
+        };
+
+        let mut client: database::Client = match database::Client::load(input.database_id) {
+            Ok(c) => c,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to load client: {}", err));
+                return;
+            }
+        };
+
+        let _ = match client.connect() {
+            Ok(_) => (),
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to connect to client: {}", err));
+                return;
+            }
+        };
+
+        match client.query(&input.input) {
             Ok(result) => {
                 let _ = klave::notifier::send_json(&result);
                 return;

@@ -41,6 +41,14 @@ pub unsafe fn _export_sql_query_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
+pub unsafe fn _export_sql_query_with_props_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let len0 = arg1;
+    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
+    T::sql_query_with_props(_rt::string_lift(bytes0));
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
 pub unsafe fn _export_sql_execute_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
     let len0 = arg1;
@@ -53,6 +61,7 @@ pub trait Guest {
     fn sql_delete(cmd: _rt::String);
     fn sql_list(cmd: _rt::String);
     fn sql_query(cmd: _rt::String);
+    fn sql_query_with_props(cmd: _rt::String);
     fn sql_execute(cmd: _rt::String);
 }
 #[doc(hidden)]
@@ -69,9 +78,12 @@ macro_rules! __export_world_klave_rust_postgre_template_cabi {
         arg1 : usize,) { $($path_to_types)*:: _export_sql_list_cabi::<$ty > (arg0, arg1)
         } #[export_name = "sql-query"] unsafe extern "C" fn export_sql_query(arg0 : * mut
         u8, arg1 : usize,) { $($path_to_types)*:: _export_sql_query_cabi::<$ty > (arg0,
-        arg1) } #[export_name = "sql-execute"] unsafe extern "C" fn
-        export_sql_execute(arg0 : * mut u8, arg1 : usize,) { $($path_to_types)*::
-        _export_sql_execute_cabi::<$ty > (arg0, arg1) } };
+        arg1) } #[export_name = "sql-query-with-props"] unsafe extern "C" fn
+        export_sql_query_with_props(arg0 : * mut u8, arg1 : usize,) {
+        $($path_to_types)*:: _export_sql_query_with_props_cabi::<$ty > (arg0, arg1) }
+        #[export_name = "sql-execute"] unsafe extern "C" fn export_sql_execute(arg0 : *
+        mut u8, arg1 : usize,) { $($path_to_types)*:: _export_sql_execute_cabi::<$ty >
+        (arg0, arg1) } };
     };
 }
 #[doc(hidden)]
@@ -125,14 +137,14 @@ pub(crate) use __export_klave_rust_postgre_template_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.36.0:component:klave-ai-rag:klave-rust-postgre-template:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 315] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa9\x01\x01A\x02\x01\
-A\x08\x01@\0\x01\0\x04\0\x0fregister-routes\x01\0\x01@\x01\x03cmds\x01\0\x04\0\x0a\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 340] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc2\x01\x01A\x02\x01\
+A\x09\x01@\0\x01\0\x04\0\x0fregister-routes\x01\0\x01@\x01\x03cmds\x01\0\x04\0\x0a\
 sql-create\x01\x01\x04\0\x0asql-delete\x01\x01\x04\0\x08sql-list\x01\x01\x04\0\x09\
-sql-query\x01\x01\x04\0\x0bsql-execute\x01\x01\x04\02component:klave-ai-rag/klav\
-e-rust-postgre-template\x04\0\x0b!\x01\0\x1bklave-rust-postgre-template\x03\0\0\0\
-G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.220.1\x10wit-bindge\
-n-rust\x060.36.0";
+sql-query\x01\x01\x04\0\x14sql-query-with-props\x01\x01\x04\0\x0bsql-execute\x01\
+\x01\x04\02component:klave-ai-rag/klave-rust-postgre-template\x04\0\x0b!\x01\0\x1b\
+klave-rust-postgre-template\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dw\
+it-component\x070.220.1\x10wit-bindgen-rust\x060.36.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
