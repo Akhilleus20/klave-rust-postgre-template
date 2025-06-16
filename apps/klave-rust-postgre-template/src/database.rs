@@ -229,7 +229,6 @@ impl Client {
         // Open the PostgreSQL connection
         match klave::sql::connection_open(&uri) {
             Ok(opaque_handle) => {
-                klave::notifier::send_string("PostgreSQL connection established successfully.");
                 self.opaque_handle = opaque_handle;
                 Ok(())
             }
