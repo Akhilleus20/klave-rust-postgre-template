@@ -221,7 +221,6 @@ impl Client {
         conn_str
     }
 
-    /// @transaction
     pub fn connect(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         // Construct the PostgreSQL connection URI
         let uri = self.connection_string();
