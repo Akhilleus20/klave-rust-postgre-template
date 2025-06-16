@@ -124,9 +124,11 @@ impl Guest for Component {
         match client.query_and_format::<Vec<Vec<Value>>>(&input.input) {
             Ok(result) => {
                 let _ = klave::notifier::send_json(&result);
+                return;
             },
             Err(err) => {
                 klave::notifier::send_string(&format!("Query failed: {}", err));
+                return;
             }
         }
     }
