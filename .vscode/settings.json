@@ -1,0 +1,9 @@
+{
+    "testing.defaultTestFramework": "vitest",
+    "workbench.colorCustomizations": {
+        "titleBar.activeBackground": "#0ba5e7",
+        "titleBar.activeForeground": "#0a1621",
+        "titleBar.inactiveBackground": "#0ba5e7",
+        "titleBar.inactiveForeground": "#0a1621"
+    }
+}

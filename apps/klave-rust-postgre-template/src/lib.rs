@@ -6,26 +6,26 @@ use klave;
 use serde_json::Value;
 
 pub mod database;
+pub mod crypto;
+pub mod utils;
 
 struct Component;
 impl Guest for Component {
 
     fn register_routes(){
-        klave::router::add_user_transaction(&String::from("sql_create"));
+        klave::router::add_user_transaction(&String::from("db_setup"));
         klave::router::add_user_transaction(&String::from("sql_delete"));
         klave::router::add_user_query(&String::from("sql_list"));
         klave::router::add_user_query(&String::from("sql_query"));
-        klave::router::add_user_query(&String::from("sql_query_with_props"));
         klave::router::add_user_query(&String::from("sql_execute"));
 
-        klave::router::add_user_query(&String::from("document_create"));
-        klave::router::add_user_query(&String::from("document_delete"));
-        klave::router::add_user_query(&String::from("document_list"));
+        klave::router::add_user_query(&String::from("read_encrypted_table"));
+        klave::router::add_user_query(&String::from("execute_table_encryption"));
     }
 
     //endpoints to test Postgres client management
-    fn sql_create(cmd: String) {
-        let input: database::CreateInput = match serde_json::from_str(&cmd) {
+    fn db_setup(cmd: String) {
+        let input: database::DBInputDetails = match serde_json::from_str(&cmd) {
             Ok(input) => input,
             Err(err) => {
                 klave::notifier::send_string(&format!("Invalid input: {}", err));
@@ -42,10 +42,7 @@ impl Guest for Component {
         };
 
         match clients.add(
-            &input.host,
-            &input.dbname,
-            &input.user,
-            &input.password
+            input.clone(),
         ) {
             Ok(database_id) => {
                 klave::notifier::send_string(&database_id);
@@ -122,44 +119,7 @@ impl Guest for Component {
             }
         };
 
-        match client.query_and_format::<Vec<Vec<Value>>>(&input.input) {
-            Ok(result) => {
-                let _ = klave::notifier::send_json(&result);
-                return;
-            },
-            Err(err) => {
-                klave::notifier::send_string(&format!("Query failed: {}", err));
-                return;
-            }
-        }
-    }
-
-    fn sql_query_with_props(cmd: String) {
-        let input: database::QueryClient = match serde_json::from_str(&cmd) {
-            Ok(input) => input,
-            Err(err) => {
-                klave::notifier::send_string(&format!("Invalid input: {}", err));
-                return;
-            }
-        };
-
-        let mut client: database::Client = match database::Client::load(input.database_id) {
-            Ok(c) => c,
-            Err(err) => {
-                klave::notifier::send_string(&format!("Failed to load client: {}", err));
-                return;
-            }
-        };
-
-        let _ = match client.connect() {
-            Ok(_) => (),
-            Err(err) => {
-                klave::notifier::send_string(&format!("Failed to connect to client: {}", err));
-                return;
-            }
-        };
-
-        match client.query(&input.input) {
+        match client.query::<Vec<Vec<Value>>>(&input.input) {
             Ok(result) => {
                 let _ = klave::notifier::send_json(&result);
                 return;
@@ -206,6 +166,41 @@ impl Guest for Component {
         }
     }
 
+    fn execute_table_encryption(cmd: String) {
+        let db_table: database::DBTable = match serde_json::from_str(&cmd) {
+            Ok(input) => input,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Invalid input: {}", err));
+                return;
+            }
+        };
+
+        let mut client: database::Client = match database::Client::load(db_table.database_id.clone()) {
+            Ok(c) => c,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to load client: {}", err));
+                return;
+            }
+        };
+        let _ = match client.connect() {
+            Ok(_) => (),
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to connect to client: {}", err));
+                return;
+            }
+        };
+        let _ = match client.encrypt_columns(db_table) {
+            Ok(_) => (),
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to encrypt columns: {}", err));
+                return;
+            }
+        };
+    }
+
+    fn read_encrypted_table(cmd: String) {
+
+    }
 }
 
 bindings::export!(Component with_types_in bindings);

@@ -1,0 +1,115 @@
+use klave::crypto::subtle::{self, CryptoKey, KeyDerivationAlgorithm, HkdfDerivParams, AesKeyGenParams, DerivedKeyAlgorithm, derive_key, export_key};
+use serde_json::Value;
+use crate::utils::get_serde_value_into_bytes;
+use crate::database::DBTable;
+
+// AES-GCM constants
+pub const AES_GCM_IV_SIZE: usize = 12;      // 12 bytes (96 bits) - optimal for AES-GCM
+pub const AES_GCM_TAG_SIZE: u8 = 16;       // 16 bytes (128 bits) - maximum security
+const AES_GCM_TAG_SIZE_BITS: u32 = 128; // Same as above but in bits
+pub const AES_GCM_TAG_HEX_SIZE: usize = 32;  // 16 bytes * 2 hex chars per byte
+pub const AES_GCM_NONCE_HEX_SIZE: usize = 24; // 12 bytes * 2 hex chars per byte
+
+// SHA-256 constants
+pub const SHA256_HEX_SIZE: usize = 64;  // 32 bytes * 2 hex chars per byte
+
+// ECC-256 constants
+pub const ECC256_PUBLIC_KEY_HEX_SIZE: usize = 128; // 64 bytes * 2 hex chars per byte
+
+
+pub fn generate_ecc_crypto_key() -> Result<CryptoKey, Box<dyn std::error::Error>> {
+    let ec_params = subtle::EcKeyGenParams { named_curve: "P-256".to_string() };
+    let gen_algorithm = subtle::KeyGenAlgorithm::Ecc(ec_params);
+
+    let private_key = match subtle::generate_key(&gen_algorithm, false, &["sign", "derive_key"]) {
+        Ok(result) => result,
+        Err(err) => {
+            klave::notifier::send_string(&err.to_string());
+            return Err(err.into());
+        }
+    };
+    Ok(private_key)
+}
+
+pub fn compute_sha256_hex_string(data: &[u8]) -> String {
+    // Using Klave's crypto utilities
+    match klave::crypto::sha::digest("SHA2-256", data) {
+        Ok(hash) => hex::encode(hash),
+        Err(e) => {
+            klave::notifier::send_string(&format!("SHA2-256 computation failed: {}", e));
+            String::new()
+        }
+    }
+}
+
+pub fn derive_aes_gcm_key(master_key: &CryptoKey, db_table: DBTable, column_name: String) -> Result<CryptoKey, Box<dyn std::error::Error>> {
+    // Use HKDF to derive a key from the master key and the column name
+    let hkdf_derivation_params = HkdfDerivParams {
+        hash: "SHA-256".to_string(),
+        salt: format!("klave-salt-encryption-'{}'", &db_table.table).into_bytes(),
+        // Use the value as info to ensure uniqueness per column and row
+        info: format!("klave-info-encryption-'{}'", column_name).into_bytes(),
+    };
+    let derivation_algorithm = KeyDerivationAlgorithm::Hkdf(hkdf_derivation_params);
+    let aes_key_gen_params = AesKeyGenParams {
+        length: 256, // AES-256
+    };
+    let derived_key_algorithm = DerivedKeyAlgorithm::Aes(aes_key_gen_params);
+    let extractable = false;
+    let usages = ["encrypt", "decrypt"];
+    let aes_gcm_key = match derive_key(&derivation_algorithm, &master_key, &derived_key_algorithm, extractable, &usages) {
+        Ok(key) => key,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to derive key: {}", err));
+            return Err(err.into());
+        }
+    };
+    Ok(aes_gcm_key)
+}
+
+pub fn derive_iv(master_key: &CryptoKey, column_name: String, value: Value) -> Result<Vec<u8>, Box<dyn std::error::Error>>
+{
+    let value_in_bytes = match get_serde_value_into_bytes(&value) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to convert value to bytes: {}", err));
+            return Err(err.into());
+        }
+    };
+    let salt = match klave::crypto::sha::digest("SHA-256", &value_in_bytes)
+    {
+        Ok(s) => s,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to compute salt: {}", err));
+            return Err(err.into());
+        }
+    };
+    let hkdf_deriv_params_iv = HkdfDerivParams {
+        hash: "SHA-256".to_string(),
+        info: format!("klave-iv-'{}", column_name).into_bytes(),
+        salt: salt,
+    };
+    let deriv_algo_iv = KeyDerivationAlgorithm::Hkdf(hkdf_deriv_params_iv);
+    let aes_key_gen_params = AesKeyGenParams {
+        length: 256, // AES-256
+    };
+    let derived_key_algorithm = DerivedKeyAlgorithm::Aes(aes_key_gen_params);
+    let usages = ["encrypt", "decrypt"];
+    let extractable = false;
+    let iv_key = match derive_key(&deriv_algo_iv, &master_key, &derived_key_algorithm, extractable, &usages) {
+        Ok(key) => key,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to derive key: {}", err));
+            return Err(err.into());
+        }
+    };
+    let iv = match export_key("raw", &iv_key)
+    {
+        Ok(mut iv) => {iv.truncate(AES_GCM_IV_SIZE as usize); iv},
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to export key: {}", err));
+            return Err(err.into());
+        }
+    };
+    Ok(iv)
+}

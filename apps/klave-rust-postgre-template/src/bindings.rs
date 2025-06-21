@@ -9,11 +9,11 @@ pub unsafe fn _export_register_routes_cabi<T: Guest>() {
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_sql_create_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
+pub unsafe fn _export_db_setup_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
     let len0 = arg1;
     let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    T::sql_create(_rt::string_lift(bytes0));
+    T::db_setup(_rt::string_lift(bytes0));
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
@@ -41,49 +41,65 @@ pub unsafe fn _export_sql_query_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_sql_query_with_props_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
-    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    let len0 = arg1;
-    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    T::sql_query_with_props(_rt::string_lift(bytes0));
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
 pub unsafe fn _export_sql_execute_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
     let len0 = arg1;
     let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
     T::sql_execute(_rt::string_lift(bytes0));
 }
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_read_encrypted_table_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let len0 = arg1;
+    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
+    T::read_encrypted_table(_rt::string_lift(bytes0));
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_execute_table_encryption_cabi<T: Guest>(
+    arg0: *mut u8,
+    arg1: usize,
+) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let len0 = arg1;
+    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
+    T::execute_table_encryption(_rt::string_lift(bytes0));
+}
 pub trait Guest {
     fn register_routes();
-    fn sql_create(cmd: _rt::String);
+    fn db_setup(cmd: _rt::String);
     fn sql_delete(cmd: _rt::String);
     fn sql_list(cmd: _rt::String);
     fn sql_query(cmd: _rt::String);
-    fn sql_query_with_props(cmd: _rt::String);
     fn sql_execute(cmd: _rt::String);
+    fn read_encrypted_table(cmd: _rt::String);
+    fn execute_table_encryption(cmd: _rt::String);
 }
 #[doc(hidden)]
 macro_rules! __export_world_klave_rust_postgre_template_cabi {
     ($ty:ident with_types_in $($path_to_types:tt)*) => {
         const _ : () = { #[export_name = "register-routes"] unsafe extern "C" fn
         export_register_routes() { $($path_to_types)*::
-        _export_register_routes_cabi::<$ty > () } #[export_name = "sql-create"] unsafe
-        extern "C" fn export_sql_create(arg0 : * mut u8, arg1 : usize,) {
-        $($path_to_types)*:: _export_sql_create_cabi::<$ty > (arg0, arg1) } #[export_name
-        = "sql-delete"] unsafe extern "C" fn export_sql_delete(arg0 : * mut u8, arg1 :
+        _export_register_routes_cabi::<$ty > () } #[export_name = "db-setup"] unsafe
+        extern "C" fn export_db_setup(arg0 : * mut u8, arg1 : usize,) {
+        $($path_to_types)*:: _export_db_setup_cabi::<$ty > (arg0, arg1) } #[export_name =
+        "sql-delete"] unsafe extern "C" fn export_sql_delete(arg0 : * mut u8, arg1 :
         usize,) { $($path_to_types)*:: _export_sql_delete_cabi::<$ty > (arg0, arg1) }
         #[export_name = "sql-list"] unsafe extern "C" fn export_sql_list(arg0 : * mut u8,
         arg1 : usize,) { $($path_to_types)*:: _export_sql_list_cabi::<$ty > (arg0, arg1)
         } #[export_name = "sql-query"] unsafe extern "C" fn export_sql_query(arg0 : * mut
         u8, arg1 : usize,) { $($path_to_types)*:: _export_sql_query_cabi::<$ty > (arg0,
-        arg1) } #[export_name = "sql-query-with-props"] unsafe extern "C" fn
-        export_sql_query_with_props(arg0 : * mut u8, arg1 : usize,) {
-        $($path_to_types)*:: _export_sql_query_with_props_cabi::<$ty > (arg0, arg1) }
-        #[export_name = "sql-execute"] unsafe extern "C" fn export_sql_execute(arg0 : *
-        mut u8, arg1 : usize,) { $($path_to_types)*:: _export_sql_execute_cabi::<$ty >
-        (arg0, arg1) } };
+        arg1) } #[export_name = "sql-execute"] unsafe extern "C" fn
+        export_sql_execute(arg0 : * mut u8, arg1 : usize,) { $($path_to_types)*::
+        _export_sql_execute_cabi::<$ty > (arg0, arg1) } #[export_name =
+        "read-encrypted-table"] unsafe extern "C" fn export_read_encrypted_table(arg0 : *
+        mut u8, arg1 : usize,) { $($path_to_types)*::
+        _export_read_encrypted_table_cabi::<$ty > (arg0, arg1) } #[export_name =
+        "execute-table-encryption"] unsafe extern "C" fn
+        export_execute_table_encryption(arg0 : * mut u8, arg1 : usize,) {
+        $($path_to_types)*:: _export_execute_table_encryption_cabi::<$ty > (arg0, arg1) }
+        };
     };
 }
 #[doc(hidden)]
@@ -137,14 +153,15 @@ pub(crate) use __export_klave_rust_postgre_template_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.36.0:component:klave-ai-rag:klave-rust-postgre-template:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 340] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xc2\x01\x01A\x02\x01\
-A\x09\x01@\0\x01\0\x04\0\x0fregister-routes\x01\0\x01@\x01\x03cmds\x01\0\x04\0\x0a\
-sql-create\x01\x01\x04\0\x0asql-delete\x01\x01\x04\0\x08sql-list\x01\x01\x04\0\x09\
-sql-query\x01\x01\x04\0\x14sql-query-with-props\x01\x01\x04\0\x0bsql-execute\x01\
-\x01\x04\02component:klave-ai-rag/klave-rust-postgre-template\x04\0\x0b!\x01\0\x1b\
-klave-rust-postgre-template\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dw\
-it-component\x070.220.1\x10wit-bindgen-rust\x060.36.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 367] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xdd\x01\x01A\x02\x01\
+A\x0a\x01@\0\x01\0\x04\0\x0fregister-routes\x01\0\x01@\x01\x03cmds\x01\0\x04\0\x08\
+db-setup\x01\x01\x04\0\x0asql-delete\x01\x01\x04\0\x08sql-list\x01\x01\x04\0\x09\
+sql-query\x01\x01\x04\0\x0bsql-execute\x01\x01\x04\0\x14read-encrypted-table\x01\
+\x01\x04\0\x18execute-table-encryption\x01\x01\x04\02component:klave-ai-rag/klav\
+e-rust-postgre-template\x04\0\x0b!\x01\0\x1bklave-rust-postgre-template\x03\0\0\0\
+G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.220.1\x10wit-bindge\
+n-rust\x060.36.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

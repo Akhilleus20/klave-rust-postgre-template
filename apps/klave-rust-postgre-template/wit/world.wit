@@ -4,10 +4,11 @@ package component:klave-ai-rag;
 world klave-rust-postgre-template {
     export register-routes: func();
 
-    export sql-create: func(cmd: string);
+    export db-setup: func(cmd: string);
     export sql-delete: func(cmd: string);
     export sql-list: func(cmd: string);
     export sql-query: func(cmd: string);
-    export sql-query-with-props: func(cmd: string);
     export sql-execute: func(cmd: string);
+    export read-encrypted-table: func(cmd: string);
+    export execute-table-encryption: func(cmd: string);
 }
