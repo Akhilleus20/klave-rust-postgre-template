@@ -483,6 +483,7 @@ impl Client {
             return Err("Client ID mismatch".into());
         }
         let query = format!("SELECT * FROM '{}' LIMIT 1", table_name);
+        klave::notifier::send_string(&query);
         match self.query::<String>(&query) {
             Ok(response) => {
                 let fields: Vec<Field> = response.fields;
