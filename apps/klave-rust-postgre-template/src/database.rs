@@ -464,10 +464,10 @@ impl Client {
         match self.update(processed_rows, answer.fields.clone(), table_name.clone())
         {
             Ok(_) => {
-                klave::notifier::send_string(&format!("Table '{}' successfully encrypted", table_name.clone()));
+                klave::notifier::send_string(&format!("Table {} successfully encrypted", table_name.clone()));
             },
             Err(err) => {
-                klave::notifier::send_string(&format!("Failed to update: '{}'", err));
+                klave::notifier::send_string(&format!("Failed to update: {}", err));
                 return Err(err.to_string());
             }
         };
@@ -482,8 +482,8 @@ impl Client {
             klave::notifier::send_string("ERROR: Client ID mismatch");
             return Err("Client ID mismatch".into());
         }
-        let query = format!("SELECT * FROM '{}' LIMIT 1", table_name);
-        klave::notifier::send_string(&query);
+        let query = format!("SELECT * FROM {} LIMIT 1", table_name);
+
         match self.query::<String>(&query) {
             Ok(response) => {
                 let fields: Vec<Field> = response.fields;
@@ -503,7 +503,7 @@ impl Client {
         // Build the query to get the primary key column name
         let query = format!("SELECT kcu.column_name FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu
             ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-            WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public' AND tc.table_name = '{}' ORDER BY kcu.ordinal_position;", table_name);
+            WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public' AND tc.table_name = {} ORDER BY kcu.ordinal_position;", table_name);
 
         match self.query::<String>(&query) {
             Ok(response) => {
@@ -526,7 +526,7 @@ impl Client {
         }
         // Build the query to retrieve the primary key and columns to encrypt
         let columns = db_table.columns.join(",");
-        let query = format!("SELECT '{}','{}' FROM '{}'", primary_key_field, columns, db_table.table);
+        let query = format!("SELECT {},{} FROM {}", primary_key_field, columns, db_table.table);
         let result = match self.query::<Vec<Vec<Value>>>(&query) {
             Ok(response) => response,
             Err(err) => {
@@ -543,10 +543,10 @@ impl Client {
         let _ = match self.execute(&query)
         {
             Ok(_) => {
-                klave::notifier::send_string(&format!("Table '{}' has been encrypted", table));
+                klave::notifier::send_string(&format!("Table {} has been encrypted", table));
             }
             Err(err) => {
-                klave::notifier::send_string(&format!("Failed to encrypt: '{}'", err));
+                klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
             }
         };
         Ok(())
@@ -565,19 +565,19 @@ impl Client {
         // All columns names
         let all_columns = column_names.join(",");
         // Build the update query
-        let mut query = format!("WITH new_values ('{}') AS (VALUES ", all_columns);
+        let mut query = format!("WITH new_values ({}) AS (VALUES ", all_columns);
         // List all new values
         query.push_str(flatten_vec_of_vec_values_to_single_string(processed_rows).as_str());
         // Update
-        query .push_str(&format!(") UPDATE '{}' SET ", table));
+        query .push_str(&format!(") UPDATE {} SET ", table));
         // Update query
         column_names.iter().enumerate().for_each(|(i, column_name)| {
-            query.push_str(&format!("'{}' = new_values.new_'{}'", column_name, column_name));
+            query.push_str(&format!("{} = new_values.new_{}", column_name, column_name));
             if i < column_names.len() - 1 {
                 query.push_str(", ");
             }
         });
-        query.push_str(&format!("FROM new_values WHERE '{}'.'{}' = new_values.'{}'", table, pk, pk));
+        query.push_str(&format!("FROM new_values WHERE {}.{} = new_values.{}", table, pk, pk));
 
         Ok(query)
     }
