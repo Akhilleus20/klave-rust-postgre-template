@@ -228,7 +228,7 @@ impl Guest for Component {
             }
         };
 
-        let _ = match client.query::<Vec<Vec<String>>>(&encrypted_query) {
+        let _ = match client.query::<Vec<Vec<Value>>>(&encrypted_query) {
             Ok(res) => {
                 let _ = klave::notifier::send_json(&res);
                 return;
