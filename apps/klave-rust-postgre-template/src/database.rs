@@ -312,6 +312,7 @@ impl Client {
     where
         T: for<'de> serde::Deserialize<'de>,
     {
+        klave::notifier::send_string(query);
         // Check client ID
         let client_id = utils::get_client_id();
         if client_id != self.client_id {
