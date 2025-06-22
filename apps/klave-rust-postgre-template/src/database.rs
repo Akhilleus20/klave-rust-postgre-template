@@ -443,7 +443,7 @@ impl Client {
                 let aes_gcm_params = AesGcmParams {
                     iv: iv.clone(),
                     additional_data: vec![], // No additional data
-                    tag_length: 16, // 128 bits
+                    tag_length: 128, // 128 bits
                 };
                 let encrypt_algo = crypto::subtle::EncryptAlgorithm::AesGcm(aes_gcm_params);
                 let mut encrypted_value = match klave::crypto::subtle::encrypt(&encrypt_algo, &aes_gcm_key, &value_in_bytes) {
