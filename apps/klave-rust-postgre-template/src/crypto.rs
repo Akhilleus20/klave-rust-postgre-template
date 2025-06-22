@@ -95,7 +95,7 @@ pub fn derive_iv(master_key: &CryptoKey, column_name: String, value: Value) -> R
     };
     let derived_key_algorithm = DerivedKeyAlgorithm::Aes(aes_key_gen_params);
     let usages = ["encrypt", "decrypt"];
-    let extractable = false;
+    let extractable = true;
     let iv_key = match derive_key(&deriv_algo_iv, &master_key, &derived_key_algorithm, extractable, &usages) {
         Ok(key) => key,
         Err(err) => {
