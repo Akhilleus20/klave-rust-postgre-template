@@ -613,8 +613,16 @@ impl Client {
         };
 
         for (idx,value) in values.iter_mut().enumerate() {
+            // Reuse serde to be in line with encryption
+            let mut serde_value = serde_json::Value::String(value.clone());
             // Convert serde Value in bytes
-            let value_in_bytes: &[u8] = value.as_bytes();
+            let value_in_bytes = match get_serde_value_into_bytes(&serde_value) {
+                Ok(bytes) => bytes,
+                Err(err) => {
+                    klave::notifier::send_string(&format!("Failed to convert value to bytes: {}", err));
+                    return Err(err);
+                }
+            };
             let _ = klave::notifier::send_json(&value_in_bytes);
 
             // Derive AES-GCM key for the column
@@ -627,7 +635,7 @@ impl Client {
             };
             // Compute the iv deterministically from the point of view of the value to encrypt.
             // I derive a key from the master key and the value to encrypt, export it as raw bytes, and use the first 12 bytes as the iv.
-            let iv = match derive_iv(&master_key, column.clone(), serde_json::Value::String(value.clone()))
+            let iv = match derive_iv(&master_key, column.clone(), serde_value.clone())
             {
                 Ok(res) => res,
                 Err(err) => {
