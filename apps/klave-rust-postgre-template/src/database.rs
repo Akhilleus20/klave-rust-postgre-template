@@ -502,9 +502,7 @@ impl Client {
             return Err("Client ID mismatch".into());
         }
         // Build the query to get the primary key column name
-        let query = format!("SELECT kcu.column_name FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu
-            ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-            WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public' AND tc.table_name = {} ORDER BY kcu.ordinal_position;", table_name);
+        let query = format!("SELECT kcu.column_name FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public' AND tc.table_name = '{}' ORDER BY kcu.ordinal_position;", table_name);
 
         match self.query::<String>(&query) {
             Ok(response) => {
