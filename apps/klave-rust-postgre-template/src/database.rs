@@ -346,6 +346,7 @@ impl Client {
             klave::notifier::send_string("ERROR: Client ID mismatch");
             return Err("Client ID mismatch".into());
         }
+        klave::notifier::send_string(query);
         match klave::sql::execute(&self.opaque_handle, query) {
             Ok(result) => Ok(result),
             Err(err) => {
