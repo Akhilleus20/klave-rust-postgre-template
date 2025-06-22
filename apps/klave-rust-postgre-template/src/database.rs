@@ -32,6 +32,7 @@ pub struct DBTable {
     pub database_id: String,
     pub table: String,
     pub columns: Vec<String>,
+    pub primary_key: String
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -373,17 +374,17 @@ impl Client {
             }
         };
 
-        // Find the Primary key field
-        let primary_key_field = self.get_table_primary_key(&db_table.table)
-            .map_err(|e| {
-                klave::notifier::send_string(&format!("Failed to get primary key field: {}", e));
-                e.to_string()
-            })?;
+        // // Find the Primary key field
+        // let primary_key_field = self.get_table_primary_key(&db_table.table)
+        //     .map_err(|e| {
+        //         klave::notifier::send_string(&format!("Failed to get primary key field: {}", e));
+        //         e.to_string()
+        //     })?;
 
         let table_name = &db_table.table;
 
         // Retrieve the primary key index and the columns to encrypt
-        let answer: PostGreResponse<Vec<Vec<Value>>> = match self.get_columns_to_encrypt(&primary_key_field, &db_table)
+        let answer: PostGreResponse<Vec<Vec<Value>>> = match self.get_columns_to_encrypt(&db_table.primary_key, &db_table)
         {
             Ok(columns) => columns,
             Err(err) => {
