@@ -485,7 +485,7 @@ impl Client {
         }
         let query = format!("SELECT * FROM {} LIMIT 1", table_name);
 
-        match self.query::<Vec<Vec<String>>>(&query) {
+        match self.query::<Vec<Vec<Value>>>(&query) {
             Ok(response) => {
                 let fields: Vec<Field> = response.fields;
                 Ok(fields)
