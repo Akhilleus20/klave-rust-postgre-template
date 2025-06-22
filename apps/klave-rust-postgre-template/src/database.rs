@@ -650,9 +650,15 @@ impl Client {
             *value = encoded_iv_value;
         }
 
-        let list_values = values.join(",");
+        let list_values = format!(
+            "({})",
+            values.iter()
+                .map(|s| format!("'{}'", s))
+                .collect::<Vec<String>>() // Collect directly into Vec<String>
+                .join(",") // Join the collected Vec
+        );
 
-        query.push_str(&format!("SELECT * FROM {} WHERE {} in ({})", table, column, list_values));
+        query.push_str(&format!("SELECT * FROM {} WHERE {} in {}", table, column, list_values));
 
         Ok(query)
     }
