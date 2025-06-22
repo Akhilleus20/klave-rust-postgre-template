@@ -430,6 +430,7 @@ impl Client {
                         return Err(err.to_string());
                     }
                 };
+                let _ = klave::notifier::send_json(&value_in_bytes);
                 // Derive AES-GCM key for the column
                 let aes_gcm_key = match derive_aes_gcm_key(&master_key, db_table.table.clone(), fields[idy].name.clone()) {
                     Ok(key) => key,
@@ -448,9 +449,11 @@ impl Client {
                         return Err(err.to_string());
                     }
                 };
+                let iv_12 = iv[0..12].to_vec();
+                let _ = klave::notifier::send_json(&iv_12);
                 // Encrypt the value with the derived AES-GCM key
                 let aes_gcm_params = AesGcmParams {
-                    iv: iv.clone(),
+                    iv: iv_12.clone(),
                     additional_data: vec![], // No additional data
                     tag_length: 128, // 128 bits
                 };
@@ -462,6 +465,8 @@ impl Client {
                         return Err(err.to_string());
                     }
                 };
+                let _ = klave::notifier::send_json(&encrypted_value);
+
                 let mut iv_and_encrypted = iv;
                 iv_and_encrypted.append(&mut encrypted_value);
                 // Encode the IV and encrypted value as a hex string
@@ -610,6 +615,8 @@ impl Client {
         for (idx,value) in values.iter_mut().enumerate() {
             // Convert serde Value in bytes
             let value_in_bytes: &[u8] = value.as_bytes();
+            let _ = klave::notifier::send_json(&value_in_bytes);
+
             // Derive AES-GCM key for the column
             let aes_gcm_key = match derive_aes_gcm_key(&master_key, table.clone(), column.clone()) {
                 Ok(key) => key,
@@ -628,9 +635,11 @@ impl Client {
                     return Err(err);
                 }
             };
+            let iv_12 = iv[0..12].to_vec();
+            let _ = klave::notifier::send_json(&iv_12);
             // Encrypt the value with the derived AES-GCM key
             let aes_gcm_params = AesGcmParams {
-                iv: iv.clone(),
+                iv: iv_12.clone(),
                 additional_data: vec![], // No additional data
                 tag_length: 128, // 128 bits
             };
@@ -642,6 +651,8 @@ impl Client {
                     return Err(err);
                 }
             };
+            let _ = klave::notifier::send_json(&encrypted_value);
+
             let mut iv_and_encrypted = iv;
             iv_and_encrypted.append(&mut encrypted_value);
             // Encode the IV and encrypted value as a hex string
