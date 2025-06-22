@@ -31,7 +31,7 @@ pub fn flatten_vec_of_vec_values_to_single_string(data: Vec<Vec<Value>>) -> Stri
                 .map(|value| { // For each Value
                     // Convert the Value enum variant into its string representation
                     match value {
-                        Value::String(s) => s,
+                        Value::String(s) => format!("'{}'",s),
                         Value::Number(n) => n.to_string(),
                         Value::Bool(b) => b.to_string(),
                         Value::Null => "null".to_string(),
