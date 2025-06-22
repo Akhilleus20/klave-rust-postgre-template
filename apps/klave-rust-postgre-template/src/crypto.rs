@@ -42,11 +42,11 @@ pub fn compute_sha256_hex_string(data: &[u8]) -> String {
     }
 }
 
-pub fn derive_aes_gcm_key(master_key: &CryptoKey, db_table: DBTable, column_name: String) -> Result<CryptoKey, Box<dyn std::error::Error>> {
+pub fn derive_aes_gcm_key(master_key: &CryptoKey, table: String, column_name: String) -> Result<CryptoKey, Box<dyn std::error::Error>> {
     // Use HKDF to derive a key from the master key and the column name
     let hkdf_derivation_params = HkdfDerivParams {
         hash: "SHA-256".to_string(),
-        salt: format!("klave-salt-encryption-'{}'", &db_table.table).into_bytes(),
+        salt: format!("klave-salt-encryption-'{}'", table).into_bytes(),
         // Use the value as info to ensure uniqueness per column and row
         info: format!("klave-info-encryption-'{}'", column_name).into_bytes(),
     };

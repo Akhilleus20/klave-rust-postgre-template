@@ -199,7 +199,45 @@ impl Guest for Component {
     }
 
     fn read_encrypted_table(cmd: String) {
+        let mut input: database::ReadEncryptedTableInput = match serde_json::from_str(&cmd) {
+            Ok(input) => input,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Invalid input: {}", err));
+                return;
+            }
+        };
+        let mut client: database::Client = match database::Client::load(input.database_id.clone()) {
+            Ok(c) => c,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to load client: {}", err));
+                return;
+            }
+        };
+        let _ = match client.connect() {
+            Ok(_) => (),
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to connect to client: {}", err));
+                return;
+            }
+        };
+        let encrypted_query = match client.build_encrypted_query(input) {
+            Ok(enc_query) => (enc_query),
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to create encrypted query: {}", err));
+                return;
+            }
+        };
 
+        let _ = match client.query::<Vec<Vec<String>>>(&encrypted_query) {
+            Ok(res) => {
+                let _ = klave::notifier::send_json(&res);
+                return;
+            }
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to use encrypted query: {}", err));
+                return;
+            }
+        };
     }
 }
 
