@@ -573,12 +573,12 @@ impl Client {
         query .push_str(&format!(") UPDATE {} SET ", table));
         // Update query
         column_names.iter().enumerate().for_each(|(i, column_name)| {
-            query.push_str(&format!("{} = new_values.new_{}", column_name, column_name));
+            query.push_str(&format!("{} = new_values.{}", column_name, column_name));
             if i < column_names.len() - 1 {
                 query.push_str(", ");
             }
         });
-        query.push_str(&format!("FROM new_values WHERE {}.{} = new_values.{}", table, pk, pk));
+        query.push_str(&format!(" FROM new_values WHERE {}.{} = new_values.{}", table, pk, pk));
 
         Ok(query)
     }
