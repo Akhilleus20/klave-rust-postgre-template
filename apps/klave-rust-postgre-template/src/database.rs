@@ -520,7 +520,7 @@ impl Client {
             let division_by_chunk:usize = processed_rows.len()/chunk_size;
             let remaining: usize = processed_rows.len() - division_by_chunk * chunk_size;
 
-            for i in 0..division_by_chunk-1 {
+            for i in 0..division_by_chunk {
                 let query = self.build_update_query(processed_rows[i*chunk_size..i*chunk_size+chunk_size-1].to_vec(), fields.clone(), table.clone())?;
                 // Execute the update
                 let _ = match self.execute(&query)
