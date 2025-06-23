@@ -493,7 +493,7 @@ impl Client {
     fn get_column_to_encrypt(&self, primary_key_field: &String, db_table: &DBTable, column: &String) -> Result<PostGreResponse<Vec<Vec<Value>>>, Box<dyn std::error::Error>> {
 
         // Build the query to retrieve the primary key and column to encrypt
-        let query = format!("SELECT {},{} FROM {}", primary_key_field, column, db_table.table);
+        let query = format!("SELECT {},{} FROM {} ORDER BY {}", primary_key_field, column, db_table.table, primary_key_field);
         let result = match self.query::<Vec<Vec<Value>>>(&query) {
             Ok(response) => response,
             Err(err) => {
