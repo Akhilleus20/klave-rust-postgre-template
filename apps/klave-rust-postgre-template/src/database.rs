@@ -29,7 +29,8 @@ pub struct DBTable {
     pub database_id: String,
     pub table: String,
     pub columns: Vec<String>,
-    pub primary_key: String
+    pub primary_key: String,
+    pub chunk_size: usize
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -381,6 +382,7 @@ impl Client {
         };
 
         let table_name = &db_table.table;
+        let chunk_size: usize = db_table.chunk_size;
 
         // Retrieve the primary key index and the columns to encrypt
         let answer: PostGreResponse<Vec<Vec<Value>>> = match self.get_columns_to_encrypt(&db_table.primary_key, &db_table)
@@ -426,7 +428,7 @@ impl Client {
             }
         }
 
-        match self.update(processed_rows, answer.fields.clone(), table_name.clone())
+        match self.update(processed_rows, answer.fields.clone(), table_name.clone(), chunk_size)
         {
             Ok(_) => {
                 klave::notifier::send_string(&format!("Table {} successfully encrypted", table_name.clone()));
@@ -500,18 +502,51 @@ impl Client {
         Ok(result)
     }
 
-    fn update(&self, processed_rows: Vec<Vec<Value>>, fields: Vec<Field>, table: String) -> Result<(), Box<dyn std::error::Error>> {
-        let query = self.build_update_query(processed_rows.clone(), fields, table.clone())?;
-        // Execute the update
-        let _ = match self.execute(&query)
-        {
-            Ok(_) => {
-                klave::notifier::send_string(&format!("Table {} has been encrypted", table));
+    fn update(&self, processed_rows: Vec<Vec<Value>>, fields: Vec<Field>, table: String, chunk_size: usize) -> Result<(), Box<dyn std::error::Error>> {
+        if processed_rows.len() <= chunk_size {
+            let query = self.build_update_query(processed_rows.clone(), fields, table.clone())?;
+            // Execute the update
+            let _ = match self.execute(&query)
+            {
+                Ok(_) => {
+                    klave::notifier::send_string(&format!("Table {} has been encrypted", table));
+                }
+                Err(err) => {
+                    klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
+                }
+            };
+        }
+        else{
+            let division_by_chunk:usize = processed_rows.len()/chunk_size;
+            let remaining: usize = processed_rows.len() - division_by_chunk * chunk_size;
+
+            for i in 0..division_by_chunk-1 {
+                let query = self.build_update_query(processed_rows[i*100..i*100+99].to_vec(), fields.clone(), table.clone())?;
+                // Execute the update
+                let _ = match self.execute(&query)
+                {
+                    Ok(_) => {
+                        klave::notifier::send_string(&format!("Chunk {} of Table {} has been encrypted", i, table));
+                    }
+                    Err(err) => {
+                        klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
+                    }
+                };
             }
-            Err(err) => {
-                klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
+            if remaining > 0 {
+                let query = self.build_update_query(processed_rows[division_by_chunk * chunk_size..division_by_chunk * chunk_size+remaining-1].to_vec(), fields.clone(), table.clone())?;
+                // Execute the update
+                let _ = match self.execute(&query)
+                {
+                    Ok(_) => {
+                        klave::notifier::send_string(&format!("Last chunk of Table {} has been encrypted", table));
+                    }
+                    Err(err) => {
+                        klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
+                    }
+                };
             }
-        };
+        }
         Ok(())
     }
 
@@ -687,5 +722,14 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn test_usize() {
+        let n: usize = 452;
+        let chunk_size: usize = 100;
+        let division: usize = n / chunk_size;
+        assert_eq!(division, 4);
+        let remaining: usize = n - division * chunk_size;
+        assert_eq!(remaining, 52);
     }
 }
