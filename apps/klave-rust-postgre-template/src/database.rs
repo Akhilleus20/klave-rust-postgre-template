@@ -45,8 +45,6 @@ pub struct ReadEncryptedTableInput {
 pub struct ReadEncryptedTablePerUserInput {
     pub database_id: String,
     pub table: String,
-    pub encrypted_column: String,
-    pub values: Vec<String>,
     pub first_name: String,
     pub last_name: String
 }
