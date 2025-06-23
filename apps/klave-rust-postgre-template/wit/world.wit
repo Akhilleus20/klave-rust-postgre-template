@@ -11,4 +11,5 @@ world klave-rust-postgre-template {
     export sql-execute: func(cmd: string);
     export read-encrypted-table: func(cmd: string);
     export execute-table-encryption: func(cmd: string);
+    export read-encrypted-data-per-user: func(cmd: string);
 }

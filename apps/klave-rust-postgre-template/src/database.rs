@@ -42,6 +42,16 @@ pub struct ReadEncryptedTableInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReadEncryptedTablePerUserInput {
+    pub database_id: String,
+    pub table: String,
+    pub encrypted_column: String,
+    pub values: Vec<String>,
+    pub first_name: String,
+    pub last_name: String
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateHandleClientInput {
     pub database_id: String,
     pub opaque_handle: String,
@@ -622,6 +632,55 @@ impl Client {
         );
 
         query.push_str(&format!("SELECT * FROM {} WHERE {} in {}", table, column, list_values));
+
+        Ok(query)
+    }
+
+    pub fn build_encrypted_query_per_user(&self, input: ReadEncryptedTablePerUserInput) -> Result<String, Box<dyn std::error::Error>> {
+        let table = input.table;
+        let first_name = input.first_name;
+        let last_name = input.last_name;
+
+        // Retrieve the master key
+        let master_key_name = self.master_key_name.clone().ok_or("Master key name not set")?;
+        let master_key = match klave::crypto::subtle::load_key(master_key_name.as_str()) {
+            Ok(key) => key,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to load master key: {}", err));
+                return Err(err);
+            }
+        };
+
+        // Recompute first name encrypted value
+        // Reuse serde to be in line with encryption
+        let serde_value_first_name = serde_json::Value::String(first_name.clone());
+
+        let iv_encrypted_value_first_name = match encrypt_value(&master_key, table.clone(), "first_name".to_string(), serde_value_first_name.clone()) {
+            Ok(enc_value) => enc_value,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
+                return Err(err);
+            }
+        };
+
+        // Recompute first name encrypted value
+        // Reuse serde to be in line with encryption
+        let serde_value_last_name = serde_json::Value::String(last_name.clone());
+
+        let iv_encrypted_value_last_name = match encrypt_value(&master_key, table.clone(), "last_name".to_string(), serde_value_last_name.clone()) {
+            Ok(enc_value) => enc_value,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
+                return Err(err);
+            }
+        };
+
+        let query: String = format!("select u.first_name, u.last_name, pu.purchase_date, pr.product_name, pr.category, pr.brand, pr.description, pr.price from users as u\
+            inner join purchases as pu on pu.user_id = u.id\
+            inner join products as pr on pr.id = pu.product_id\
+            where u.first_name = '{}' and u.last_name = '{}'",
+            iv_encrypted_value_first_name,
+            iv_encrypted_value_last_name);
 
         Ok(query)
     }

@@ -21,6 +21,7 @@ impl Guest for Component {
 
         klave::router::add_user_query(&String::from("read_encrypted_table"));
         klave::router::add_user_query(&String::from("execute_table_encryption"));
+        klave::router::add_user_query(&String::from("read_encrypted_data_per_user"));
     }
 
     //endpoints to test Postgres client management
@@ -235,6 +236,52 @@ impl Guest for Component {
             }
             Err(err) => {
                 klave::notifier::send_string(&format!("Failed to use encrypted query: {}", err));
+                return;
+            }
+        };
+    }
+
+    fn read_encrypted_data_per_user(cmd: String) {
+        let input: database::ReadEncryptedTablePerUserInput = match serde_json::from_str(&cmd) {
+            Ok(input) => input,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Invalid input: {}", err));
+                return;
+            }
+        };
+        let mut client: database::Client = match database::Client::load(input.database_id.clone()) {
+            Ok(c) => c,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to load client: {}", err));
+                return;
+            }
+        };
+
+        // Connect to the DB and establish a handle
+        let _ = match client.connect() {
+            Ok(_) => (),
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to connect to client: {}", err));
+                return;
+            }
+        };
+
+        // Build query where first name and last name have been replaced with corresponding encrypted values
+        let query: String = match client.build_encrypted_query_per_user(input) {
+            Ok(res) => res,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to create query: {}", err));
+                return;
+            }
+        };
+
+        let _ = match client.query::<Vec<Vec<Value>>>(&query) {
+            Ok(res) => {
+                let _ = klave::notifier::send_json(&res);
+                return;
+            },
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to query the DB: {}", err));
                 return;
             }
         };
