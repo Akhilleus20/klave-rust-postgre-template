@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
-use hex::encode;
-use klave::{crypto::{self, subtle::{derive_key, export_key, save_key, AesGcmParams, CryptoKey, EcKeyGenParams, HkdfDerivParams, KeyDerivationAlgorithm, KeyGenAlgorithm}}, ledger::Table};
+use klave::{crypto::subtle::{save_key}};
 use serde_json::{self, Value};
 use serde::{Deserialize, Serialize};
 
-use crate::{crypto::{derive_aes_gcm_key, derive_iv, generate_ecc_crypto_key, AES_GCM_IV_SIZE}, utils::{self, get_serde_value_into_bytes, flatten_vec_of_vec_values_to_single_string}};
+use crate::{crypto::{generate_ecc_crypto_key, encrypt_value}, utils::{self, flatten_vec_of_vec_values_to_single_string}};
 
 pub(crate) const DATABASE_CLIENT_TABLE: &str = "DatabaseClientTable";
 
@@ -383,13 +380,6 @@ impl Client {
             }
         };
 
-        // // Find the Primary key field
-        // let primary_key_field = self.get_table_primary_key(&db_table.table)
-        //     .map_err(|e| {
-        //         klave::notifier::send_string(&format!("Failed to get primary key field: {}", e));
-        //         e.to_string()
-        //     })?;
-
         let table_name = &db_table.table;
 
         // Retrieve the primary key index and the columns to encrypt
@@ -415,64 +405,24 @@ impl Client {
             }
         };
 
-        // Parse processed rows and encrypt each column
-        for (idx, row) in processed_rows.iter_mut().enumerate() {
+        // Parse processed rows and encrypt specific columns
+        for row in processed_rows.iter_mut() {
             for (idy, value) in row.iter_mut().enumerate() {
+                // Skip primary key column
                 if idy == 0 {
-                    // Skip primary key column
                     continue;
                 }
-                // Convert serde Value in bytes
-                let value_in_bytes = match get_serde_value_into_bytes(&value) {
-                    Ok(bytes) => bytes,
-                    Err(err) => {
-                        klave::notifier::send_string(&format!("Failed to convert value to bytes: {}", err));
-                        return Err(err.to_string());
-                    }
-                };
 
-                // Derive AES-GCM key for the column
-                let aes_gcm_key = match derive_aes_gcm_key(&master_key, db_table.table.clone(), fields[idy].name.clone()) {
-                    Ok(key) => key,
-                    Err(err) => {
-                        klave::notifier::send_string(&format!("Failed to derive AES-GCM key: {}", err));
-                        return Err(err.to_string());
-                    }
-                };
-                // Compute the iv deterministically from the point of view of the value to encrypt.
-                // I derive a key from the master key and the value to encrypt, export it as raw bytes, and use the first 12 bytes as the iv.
-                let iv = match derive_iv(&master_key, fields[idy].name.clone(), value.clone())
-                {
-                    Ok(res) => res,
-                    Err(err) => {
-                        klave::notifier::send_string(&format!("Failed to derive AES-GCM key: {}", err));
-                        return Err(err.to_string());
-                    }
-                };
-                let iv_12 = iv[0..12].to_vec();
-
-                // Encrypt the value with the derived AES-GCM key
-                let aes_gcm_params = AesGcmParams {
-                    iv: iv_12.clone(),
-                    additional_data: vec![], // No additional data
-                    tag_length: 128, // 128 bits
-                };
-                let encrypt_algo = crypto::subtle::EncryptAlgorithm::AesGcm(aes_gcm_params);
-                let mut encrypted_value = match klave::crypto::subtle::encrypt(&encrypt_algo, &aes_gcm_key, &value_in_bytes) {
-                    Ok(encrypted) => encrypted,
+                let iv_encrypted_value = match encrypt_value(&master_key, table_name.to_string(), fields[idy].name.clone(), value.clone()) {
+                    Ok(enc_value) => enc_value,
                     Err(err) => {
                         klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
                         return Err(err.to_string());
                     }
                 };
 
-                let mut iv_and_encrypted = iv;
-                iv_and_encrypted.append(&mut encrypted_value);
-                // Encode the IV and encrypted value as a hex string
-                let encoded_iv_value = encode(&iv_and_encrypted);
-
                 //update the value with the encrypted value
-                *value = serde_json::Value::String(encoded_iv_value);
+                *value = serde_json::Value::String(iv_encrypted_value);
             }
         }
 
@@ -584,12 +534,13 @@ impl Client {
         // Update
         query .push_str(&format!(") UPDATE {} SET ", table));
         // Update query
-        column_names.iter().enumerate().for_each(|(i, column_name)| {
+        for (i, column_name) in column_names.iter().enumerate() {
+            if i==0 { continue; }
             query.push_str(&format!("{} = new_values.{}", column_name, column_name));
             if i < column_names.len() - 1 {
                 query.push_str(", ");
             }
-        });
+        };
         query.push_str(&format!(" FROM new_values WHERE {}.{} = new_values.{}", table, pk, pk));
 
         Ok(query)
@@ -611,59 +562,19 @@ impl Client {
             }
         };
 
-        for (idx,value) in values.iter_mut().enumerate() {
+        for value in values.iter_mut() {
             // Reuse serde to be in line with encryption
             let serde_value = serde_json::Value::String(value.clone());
-            // Convert serde Value in bytes
-            let value_in_bytes = match get_serde_value_into_bytes(&serde_value) {
-                Ok(bytes) => bytes,
-                Err(err) => {
-                    klave::notifier::send_string(&format!("Failed to convert value to bytes: {}", err));
-                    return Err(err);
-                }
-            };
 
-            // Derive AES-GCM key for the column
-            let aes_gcm_key = match derive_aes_gcm_key(&master_key, table.clone(), column.clone()) {
-                Ok(key) => key,
-                Err(err) => {
-                    klave::notifier::send_string(&format!("Failed to derive AES-GCM key: {}", err));
-                    return Err(err);
-                }
-            };
-            // Compute the iv deterministically from the point of view of the value to encrypt.
-            // I derive a key from the master key and the value to encrypt, export it as raw bytes, and use the first 12 bytes as the iv.
-            let iv = match derive_iv(&master_key, column.clone(), serde_value.clone())
-            {
-                Ok(res) => res,
-                Err(err) => {
-                    klave::notifier::send_string(&format!("Failed to derive AES-GCM key: {}", err));
-                    return Err(err);
-                }
-            };
-            let iv_12 = iv[0..12].to_vec();
-
-            // Encrypt the value with the derived AES-GCM key
-            let aes_gcm_params = AesGcmParams {
-                iv: iv_12.clone(),
-                additional_data: vec![], // No additional data
-                tag_length: 128, // 128 bits
-            };
-            let encrypt_algo = crypto::subtle::EncryptAlgorithm::AesGcm(aes_gcm_params);
-            let mut encrypted_value = match klave::crypto::subtle::encrypt(&encrypt_algo, &aes_gcm_key, &value_in_bytes) {
-                Ok(encrypted) => encrypted,
+            let iv_encrypted_value = match encrypt_value(&master_key, table.clone(), column.clone(), serde_value.clone()) {
+                Ok(enc_value) => enc_value,
                 Err(err) => {
                     klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
                     return Err(err);
                 }
             };
-
-            let mut iv_and_encrypted = iv;
-            iv_and_encrypted.append(&mut encrypted_value);
-            // Encode the IV and encrypted value as a hex string
-            let encoded_iv_value = encode(&iv_and_encrypted);
-            //replace in values
-            *value = encoded_iv_value;
+            //replace in value
+            *value = iv_encrypted_value;
         }
 
         let list_values = format!(

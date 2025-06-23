@@ -199,7 +199,7 @@ impl Guest for Component {
     }
 
     fn read_encrypted_table(cmd: String) {
-        let mut input: database::ReadEncryptedTableInput = match serde_json::from_str(&cmd) {
+        let input: database::ReadEncryptedTableInput = match serde_json::from_str(&cmd) {
             Ok(input) => input,
             Err(err) => {
                 klave::notifier::send_string(&format!("Invalid input: {}", err));
@@ -221,7 +221,7 @@ impl Guest for Component {
             }
         };
         let encrypted_query = match client.build_encrypted_query(input) {
-            Ok(enc_query) => (enc_query),
+            Ok(enc_query) => enc_query,
             Err(err) => {
                 klave::notifier::send_string(&format!("Failed to create encrypted query: {}", err));
                 return;

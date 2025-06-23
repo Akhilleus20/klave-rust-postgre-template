@@ -1,12 +1,11 @@
-use klave::crypto::subtle::{self, CryptoKey, KeyDerivationAlgorithm, HkdfDerivParams, AesKeyGenParams, DerivedKeyAlgorithm, derive_key, export_key};
+use hex::encode;
+use klave::crypto::subtle::{self, CryptoKey, EncryptAlgorithm, KeyDerivationAlgorithm, HkdfDerivParams, AesGcmParams, AesKeyGenParams, DerivedKeyAlgorithm, derive_key, encrypt, export_key};
 use serde_json::Value;
 use crate::utils::get_serde_value_into_bytes;
-use crate::database::DBTable;
 
 // AES-GCM constants
 pub const AES_GCM_IV_SIZE: usize = 12;      // 12 bytes (96 bits) - optimal for AES-GCM
 pub const AES_GCM_TAG_SIZE: u8 = 16;       // 16 bytes (128 bits) - maximum security
-const AES_GCM_TAG_SIZE_BITS: u32 = 128; // Same as above but in bits
 pub const AES_GCM_TAG_HEX_SIZE: usize = 32;  // 16 bytes * 2 hex chars per byte
 pub const AES_GCM_NONCE_HEX_SIZE: usize = 24; // 12 bytes * 2 hex chars per byte
 
@@ -67,8 +66,7 @@ pub fn derive_aes_gcm_key(master_key: &CryptoKey, table: String, column_name: St
     Ok(aes_gcm_key)
 }
 
-pub fn derive_iv(master_key: &CryptoKey, column_name: String, value: Value) -> Result<Vec<u8>, Box<dyn std::error::Error>>
-{
+pub fn derive_iv(master_key: &CryptoKey, column_name: String, value: Value) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let value_in_bytes = match get_serde_value_into_bytes(&value) {
         Ok(bytes) => bytes,
         Err(err) => {
@@ -112,4 +110,57 @@ pub fn derive_iv(master_key: &CryptoKey, column_name: String, value: Value) -> R
         }
     };
     Ok(iv)
+}
+
+pub fn encrypt_value(master_key: &CryptoKey, table_name: String, column_name: String, value:Value) -> Result<String, Box<dyn std::error::Error>> {
+    // Convert serde Value in bytes
+    let value_in_bytes = match get_serde_value_into_bytes(&value) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to convert value to bytes: {}", err));
+            return Err(err);
+        }
+    };
+
+    // Derive AES-GCM key for the column
+    let aes_gcm_key = match derive_aes_gcm_key(&master_key,table_name.clone(), column_name.clone()) {
+        Ok(key) => key,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to derive AES-GCM key: {}", err));
+            return Err(err);
+        }
+    };
+    // Compute the iv deterministically from the point of view of the value to encrypt.
+    // I derive a key from the master key and the value to encrypt, export it as raw bytes, and use the first 12 bytes as the iv.
+    let iv = match derive_iv(&master_key, column_name.clone(), value.clone())
+    {
+        Ok(res) => res,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to derive AES-GCM key: {}", err));
+            return Err(err);
+        }
+    };
+    let iv_12 = iv[0..12].to_vec();
+
+    // Encrypt the value with the derived AES-GCM key
+    let aes_gcm_params = AesGcmParams {
+        iv: iv_12.clone(),
+        additional_data: vec![], // No additional data
+        tag_length: 128, // 128 bits
+    };
+    let encrypt_algo = EncryptAlgorithm::AesGcm(aes_gcm_params);
+    let mut encrypted_value = match encrypt(&encrypt_algo, &aes_gcm_key, &value_in_bytes) {
+        Ok(encrypted) => encrypted,
+        Err(err) => {
+            klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
+            return Err(err);
+        }
+    };
+    // Concatenate iv and encrypted value
+    let mut iv_and_encrypted = iv;
+    iv_and_encrypted.append(&mut encrypted_value);
+    // Encode the iv and encrypted value as a hex string
+    let encoded_iv_value = encode(&iv_and_encrypted);
+
+    Ok(encoded_iv_value)
 }
