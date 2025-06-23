@@ -363,7 +363,7 @@ impl Client {
     }
 
     // Encrypts the specified columns in the given DBTable.
-    pub fn encrypt_columns(&mut self, db_table: DBTable) -> Result<(), String> {
+    pub fn encrypt_columns(&mut self, db_table: DBTable) -> Result<(), Box<dyn std::error::Error>> {
 
         // Check client ID
         let client_id = utils::get_client_id();
@@ -372,25 +372,32 @@ impl Client {
             return Err("Client ID mismatch".into());
         }
 
-        // Retrieve the table data properties
-        let fields = match self.get_table_properties(&db_table.table) {
-            Ok(fields) => fields,
-            Err(err) => {
-                klave::notifier::send_string(&format!("Failed to get table properties: {}", err));
-                return Err(err.to_string());
-            }
-        };
+        //for each column name, I retrieve both primary key + data associated to the column to encrypt
+        for column in db_table.columns.clone() {
+            let _ = match self.encrypt_single_column(column.clone(), &db_table) {
+                Ok(_) => (),
+                Err(err) => {
+                    klave::notifier::send_string(&format!("Failed to encrypt column {}: {}", column, err));
+                    return Err(err);
+                }
+            };
+        }
+
+        Ok(())
+    }
+
+    fn encrypt_single_column(&mut self, column: String, db_table: &DBTable) -> Result<(), Box<dyn std::error::Error>> {
 
         let table_name = &db_table.table;
         let chunk_size: usize = db_table.chunk_size;
 
         // Retrieve the primary key index and the columns to encrypt
-        let answer: PostGreResponse<Vec<Vec<Value>>> = match self.get_columns_to_encrypt(&db_table.primary_key, &db_table)
+        let answer: PostGreResponse<Vec<Vec<Value>>> = match self.get_column_to_encrypt(&db_table.primary_key, &db_table, &column)
         {
-            Ok(columns) => columns,
+            Ok(column) => column,
             Err(err) => {
                 klave::notifier::send_string(&format!("Failed to get columns to encrypt: {}", err));
-                return Err(err.to_string());
+                return Err(err);
             }
         };
 
@@ -403,29 +410,31 @@ impl Client {
             Ok(key) => key,
             Err(err) => {
                 klave::notifier::send_string(&format!("Failed to load master key: {}", err));
-                return Err(err.to_string());
+                return Err(err);
             }
         };
 
-        // Parse processed rows and encrypt specific columns
+        // Parse processed rows and encrypt specific column
         for row in processed_rows.iter_mut() {
-            for (idy, value) in row.iter_mut().enumerate() {
-                // Skip primary key column
-                if idy == 0 {
-                    continue;
+            //the column to encrypt is the second one (index 1)
+            let value = match row.get_mut(1) {
+                Some (item) => {item},
+                None => {
+                    klave::notifier::send_string(&format!("Missing column: {}", column));
+                    return Err(format!("Missing column: {}", column).into());
                 }
+            };
 
-                let iv_encrypted_value = match encrypt_value(&master_key, table_name.to_string(), fields[idy].name.clone(), value.clone()) {
-                    Ok(enc_value) => enc_value,
-                    Err(err) => {
-                        klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
-                        return Err(err.to_string());
-                    }
-                };
+            let iv_encrypted_value = match encrypt_value(&master_key, table_name.to_string(), column.clone(), value.clone()) {
+                Ok(enc_value) => enc_value,
+                Err(err) => {
+                    klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
+                    return Err(err);
+                }
+            };
 
-                //update the value with the encrypted value
-                *value = serde_json::Value::String(iv_encrypted_value);
-            }
+            //update the value with the encrypted value
+            *value = serde_json::Value::String(iv_encrypted_value);
         }
 
         match self.update(processed_rows, answer.fields.clone(), table_name.clone(), chunk_size)
@@ -435,10 +444,9 @@ impl Client {
             },
             Err(err) => {
                 klave::notifier::send_string(&format!("Failed to update: {}", err));
-                return Err(err.to_string());
+                return Err(err);
             }
         };
-
         Ok(())
     }
 
@@ -482,20 +490,14 @@ impl Client {
         }
     }
 
-    fn get_columns_to_encrypt(&self, primary_key_field: &String, db_table: &DBTable) -> Result<PostGreResponse<Vec<Vec<Value>>>, Box<dyn std::error::Error>> {
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
-        // Build the query to retrieve the primary key and columns to encrypt
-        let columns = db_table.columns.join(",");
-        let query = format!("SELECT {},{} FROM {}", primary_key_field, columns, db_table.table);
+    fn get_column_to_encrypt(&self, primary_key_field: &String, db_table: &DBTable, column: &String) -> Result<PostGreResponse<Vec<Vec<Value>>>, Box<dyn std::error::Error>> {
+
+        // Build the query to retrieve the primary key and column to encrypt
+        let query = format!("SELECT {},{} FROM {}", primary_key_field, column, db_table.table);
         let result = match self.query::<Vec<Vec<Value>>>(&query) {
             Ok(response) => response,
             Err(err) => {
-                klave::notifier::send_string(&format!("Failed to get columns to encrypt: {}", err));
+                klave::notifier::send_string(&format!("Failed to get the column to encrypt: {}", err));
                 return Err(err);
             }
         };
