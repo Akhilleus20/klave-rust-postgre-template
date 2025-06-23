@@ -352,7 +352,6 @@ impl Client {
             klave::notifier::send_string("ERROR: Client ID mismatch");
             return Err("Client ID mismatch".into());
         }
-        klave::notifier::send_string(query);
         match klave::sql::execute(&self.opaque_handle, query) {
             Ok(result) => Ok(result),
             Err(err) => {
@@ -437,7 +436,7 @@ impl Client {
             *value = serde_json::Value::String(iv_encrypted_value);
         }
 
-        match self.update(processed_rows, answer.fields.clone(), table_name.clone(), chunk_size)
+        match self.update(processed_rows, answer.fields.clone(), table_name.clone(), chunk_size, column)
         {
             Ok(_) => {
                 klave::notifier::send_string(&format!("Table {} successfully encrypted", table_name.clone()));
@@ -504,14 +503,14 @@ impl Client {
         Ok(result)
     }
 
-    fn update(&self, processed_rows: Vec<Vec<Value>>, fields: Vec<Field>, table: String, chunk_size: usize) -> Result<(), Box<dyn std::error::Error>> {
+    fn update(&self, processed_rows: Vec<Vec<Value>>, fields: Vec<Field>, table: String, chunk_size: usize, column_name: String) -> Result<(), Box<dyn std::error::Error>> {
         if processed_rows.len() <= chunk_size {
             let query = self.build_update_query(processed_rows.clone(), fields, table.clone())?;
             // Execute the update
             let _ = match self.execute(&query)
             {
                 Ok(_) => {
-                    klave::notifier::send_string(&format!("Table {} has been encrypted", table));
+                    klave::notifier::send_string(&format!("Column {} of table {} has been encrypted", column_name, table));
                 }
                 Err(err) => {
                     klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
@@ -528,7 +527,7 @@ impl Client {
                 let _ = match self.execute(&query)
                 {
                     Ok(_) => {
-                        klave::notifier::send_string(&format!("Chunk {} of Table {} has been encrypted", i, table));
+                        klave::notifier::send_string(&format!("Chunk {} of column {} of table {} has been encrypted", i, column_name, table));
                     }
                     Err(err) => {
                         klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
@@ -541,7 +540,7 @@ impl Client {
                 let _ = match self.execute(&query)
                 {
                     Ok(_) => {
-                        klave::notifier::send_string(&format!("Last chunk of Table {} has been encrypted", table));
+                        klave::notifier::send_string(&format!("Last chunk {} of column {} of table {} has been encrypted", division_by_chunk, column_name, table));
                     }
                     Err(err) => {
                         klave::notifier::send_string(&format!("Failed to encrypt: {}", err));
