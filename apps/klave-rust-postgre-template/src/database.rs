@@ -673,9 +673,9 @@ impl Client {
             }
         };
 
-        let query: String = format!("select u.first_name, u.last_name, pu.purchase_date, pr.product_name, pr.category, pr.brand, pr.description, pr.price from users as u\
-            inner join purchases as pu on pu.user_id = u.id\
-            inner join products as pr on pr.id = pu.product_id\
+        let query: String = format!("select u.first_name, u.last_name, pu.purchase_date, pr.product_name, pr.category, pr.brand, pr.description, pr.price from users as u \
+            inner join purchases as pu on pu.user_id = u.id \
+            inner join products as pr on pr.id = pu.product_id \
             where u.first_name = '{}' and u.last_name = '{}'",
             iv_encrypted_value_first_name,
             iv_encrypted_value_last_name);
