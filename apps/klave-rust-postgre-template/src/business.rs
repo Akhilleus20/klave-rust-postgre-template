@@ -48,10 +48,10 @@ pub fn read_encrypted_data_per_user(cmd: String) {
         }
     };
 
-    for elem in result.resultset.iter_mut() {
-        let first_name_cleartext = input.first_name.trim().to_string();
-        let last_name_cleartext = input.last_name.trim().to_string();
+    let first_name_cleartext = input.first_name.trim().to_string();
+    let last_name_cleartext = input.last_name.trim().to_string();
 
+    for elem in result.resultset.iter_mut() {
         let first_name_value = match elem.get_mut(0) {
             Some(res) => res,
             None => {
@@ -59,9 +59,11 @@ pub fn read_encrypted_data_per_user(cmd: String) {
                 return;
             }
         };
-        if first_name_value.to_string() == query.first_name_encryption {
-            *first_name_value = serde_json::Value::String(first_name_cleartext);
-        }
+        if let Some(val) = first_name_value.as_str() {
+            if val == query.first_name_encryption {
+                *first_name_value = serde_json::Value::String(first_name_cleartext.clone());
+            }
+        };
 
         let last_name_value = match elem.get_mut(1) {
             Some(res) => res,
@@ -70,9 +72,11 @@ pub fn read_encrypted_data_per_user(cmd: String) {
                 return;
             }
         };
-        if last_name_value.to_string() == query.last_name_encryption {
-            *last_name_value = serde_json::Value::String(last_name_cleartext);
-        }
+        if let Some(val) = last_name_value.as_str() {
+            if val == query.last_name_encryption {
+                *last_name_value = serde_json::Value::String(last_name_cleartext.clone());
+            }
+        };
     }
 
     let _ = klave::notifier::send_json(&result);
