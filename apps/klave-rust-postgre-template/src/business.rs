@@ -37,6 +37,9 @@ pub fn read_encrypted_data_per_user(cmd: String) {
         }
     };
 
+    klave::notifier::send_string(&format!("first name encryption is: {}", query.first_name_encryption.clone()));
+    klave::notifier::send_string(&format!("last name encryption is: {}", query.last_name_encryption.clone()));
+
     let mut result = match client.query::<Vec<Vec<Value>>>(&query.query) {
         Ok(res) => res,
         Err(err) => {
