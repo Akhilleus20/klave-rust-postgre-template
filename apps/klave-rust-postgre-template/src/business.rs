@@ -1,5 +1,3 @@
-use std::ascii::AsciiExt;
-
 use serde_json::Value;
 
 use crate::{database::{self, EncryptedQueryWithEncryptedUser}};
@@ -79,7 +77,7 @@ pub fn read_encrypted_data_per_user(cmd: String) {
 }
 
 pub fn avg_age_for_male(cmd: String) {
-    let input: database::QueryClient = match serde_json::from_str(&cmd) {
+    let input: database::DatabaseIdInput = match serde_json::from_str(&cmd) {
         Ok(input) => input,
         Err(err) => {
             klave::notifier::send_string(&format!("Invalid input: {}", err));
@@ -115,7 +113,7 @@ pub fn avg_age_for_male(cmd: String) {
     // Run query
     let _ = match client.query::<Vec<Vec<Value>>>(&query) {
         Ok(res) => {
-            klave::notifier::send_json(&res);
+            let _ = klave::notifier::send_json(&res);
             return;
         },
         Err(err) => {
@@ -126,7 +124,7 @@ pub fn avg_age_for_male(cmd: String) {
 }
 
 pub fn avg_age_for_female(cmd: String) {
-    let input: database::QueryClient = match serde_json::from_str(&cmd) {
+    let input: database::DatabaseIdInput = match serde_json::from_str(&cmd) {
         Ok(input) => input,
         Err(err) => {
             klave::notifier::send_string(&format!("Invalid input: {}", err));
@@ -162,7 +160,7 @@ pub fn avg_age_for_female(cmd: String) {
     // Run query
     let _ = match client.query::<Vec<Vec<Value>>>(&query) {
         Ok(res) => {
-            klave::notifier::send_json(&res);
+            let _ = klave::notifier::send_json(&res);
             return;
         },
         Err(err) => {
