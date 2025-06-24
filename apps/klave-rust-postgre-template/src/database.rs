@@ -730,7 +730,7 @@ impl Client {
         let query = format!("SELECT avg(u.age) FROM users as u \
             INNER JOIN purchases AS pu ON pu.user_id = u.id \
             INNER JOIN products AS pr ON pr.id = pu.product_id \
-            WHERE pu.total_price > 300 AND u.gender = {}", iv_encrypted_value_gender);
+            WHERE pu.total_price > 300 AND u.gender = '{}'", iv_encrypted_value_gender);
 
         Ok(query)
     }
