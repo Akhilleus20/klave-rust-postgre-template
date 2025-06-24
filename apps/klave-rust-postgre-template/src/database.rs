@@ -187,6 +187,19 @@ pub struct EncryptionDBDetails {
     pub encryption_key_name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EncryptedQueryWithEncryptedUser {
+    pub query: String,
+    pub first_name_encryption: String,
+    pub last_name_encryption: String
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EncryptedQueryWithEncryptedGender {
+    pub query: String,
+    pub gender_encryption: String
+}
+
 impl Client {
 
     pub fn new(
@@ -634,10 +647,11 @@ impl Client {
         Ok(query)
     }
 
-    pub fn build_encrypted_query_per_user(&self, input: ReadEncryptedTablePerUserInput) -> Result<String, Box<dyn std::error::Error>> {
-        let table = input.table;
-        let first_name = input.first_name;
-        let last_name = input.last_name;
+    pub fn build_encrypted_query_per_user(&self, input: &ReadEncryptedTablePerUserInput) -> Result<EncryptedQueryWithEncryptedUser, Box<dyn std::error::Error>> {
+        let table = &input.table;
+        //retrieve first name and last name and trim them
+        let first_name = &input.first_name.trim().to_string();
+        let last_name = &input.last_name.trim().to_string();
 
         // Retrieve the master key
         let master_key_name = self.master_key_name.clone().ok_or("Master key name not set")?;
@@ -679,6 +693,44 @@ impl Client {
             where u.first_name = '{}' and u.last_name = '{}'",
             iv_encrypted_value_first_name,
             iv_encrypted_value_last_name);
+
+        let res = EncryptedQueryWithEncryptedUser {
+            query: query,
+            first_name_encryption: iv_encrypted_value_first_name,
+            last_name_encryption: iv_encrypted_value_last_name
+        };
+
+        Ok(res)
+    }
+
+    pub fn build_encrypted_query_per_gender(&self, gender: &String) -> Result<String, Box<dyn std::error::Error>> {
+        // Retrieve the master key
+        let master_key_name = self.master_key_name.clone().ok_or("Master key name not set")?;
+        let master_key = match klave::crypto::subtle::load_key(master_key_name.as_str()) {
+            Ok(key) => key,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to load master key: {}", err));
+                return Err(err);
+            }
+        };
+
+        // Encrypted query
+        // Reuse serde to be in line with encryption
+        let serde_value_gender = serde_json::Value::String(gender.to_string());
+
+        let iv_encrypted_value_gender = match encrypt_value(&master_key, "users".to_string(), "gender".to_string(), serde_value_gender.clone()) {
+            Ok(enc_value) => enc_value,
+            Err(err) => {
+                klave::notifier::send_string(&format!("Failed to encrypt value: {}", err));
+                return Err(err);
+            }
+        };
+
+        // Query
+        let query = format!("SELECT avg(u.age) FROM users as u \
+            INNER JOIN purchases AS pu ON pu.user_id = u.id \
+            INNER JOIN products AS pr ON pr.id = pu.product_id \
+            WHERE pu.total_price > 300 AND u.gender = {}", iv_encrypted_value_gender);
 
         Ok(query)
     }

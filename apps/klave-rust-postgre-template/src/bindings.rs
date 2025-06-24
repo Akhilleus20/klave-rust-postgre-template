@@ -17,46 +17,6 @@ pub unsafe fn _export_db_setup_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_sql_delete_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
-    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    let len0 = arg1;
-    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    T::sql_delete(_rt::string_lift(bytes0));
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
-pub unsafe fn _export_sql_list_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
-    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    let len0 = arg1;
-    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    T::sql_list(_rt::string_lift(bytes0));
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
-pub unsafe fn _export_sql_query_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
-    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    let len0 = arg1;
-    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    T::sql_query(_rt::string_lift(bytes0));
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
-pub unsafe fn _export_sql_execute_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
-    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    let len0 = arg1;
-    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    T::sql_execute(_rt::string_lift(bytes0));
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
-pub unsafe fn _export_read_encrypted_table_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
-    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-    let len0 = arg1;
-    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    T::read_encrypted_table(_rt::string_lift(bytes0));
-}
-#[doc(hidden)]
-#[allow(non_snake_case)]
 pub unsafe fn _export_execute_table_encryption_cabi<T: Guest>(
     arg0: *mut u8,
     arg1: usize,
@@ -77,16 +37,29 @@ pub unsafe fn _export_read_encrypted_data_per_user_cabi<T: Guest>(
     let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
     T::read_encrypted_data_per_user(_rt::string_lift(bytes0));
 }
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_avg_age_for_male_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let len0 = arg1;
+    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
+    T::avg_age_for_male(_rt::string_lift(bytes0));
+}
+#[doc(hidden)]
+#[allow(non_snake_case)]
+pub unsafe fn _export_avg_age_for_female_cabi<T: Guest>(arg0: *mut u8, arg1: usize) {
+    #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
+    let len0 = arg1;
+    let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
+    T::avg_age_for_female(_rt::string_lift(bytes0));
+}
 pub trait Guest {
     fn register_routes();
     fn db_setup(cmd: _rt::String);
-    fn sql_delete(cmd: _rt::String);
-    fn sql_list(cmd: _rt::String);
-    fn sql_query(cmd: _rt::String);
-    fn sql_execute(cmd: _rt::String);
-    fn read_encrypted_table(cmd: _rt::String);
     fn execute_table_encryption(cmd: _rt::String);
     fn read_encrypted_data_per_user(cmd: _rt::String);
+    fn avg_age_for_male(cmd: _rt::String);
+    fn avg_age_for_female(cmd: _rt::String);
 }
 #[doc(hidden)]
 macro_rules! __export_world_klave_rust_postgre_template_cabi {
@@ -96,25 +69,18 @@ macro_rules! __export_world_klave_rust_postgre_template_cabi {
         _export_register_routes_cabi::<$ty > () } #[export_name = "db-setup"] unsafe
         extern "C" fn export_db_setup(arg0 : * mut u8, arg1 : usize,) {
         $($path_to_types)*:: _export_db_setup_cabi::<$ty > (arg0, arg1) } #[export_name =
-        "sql-delete"] unsafe extern "C" fn export_sql_delete(arg0 : * mut u8, arg1 :
-        usize,) { $($path_to_types)*:: _export_sql_delete_cabi::<$ty > (arg0, arg1) }
-        #[export_name = "sql-list"] unsafe extern "C" fn export_sql_list(arg0 : * mut u8,
-        arg1 : usize,) { $($path_to_types)*:: _export_sql_list_cabi::<$ty > (arg0, arg1)
-        } #[export_name = "sql-query"] unsafe extern "C" fn export_sql_query(arg0 : * mut
-        u8, arg1 : usize,) { $($path_to_types)*:: _export_sql_query_cabi::<$ty > (arg0,
-        arg1) } #[export_name = "sql-execute"] unsafe extern "C" fn
-        export_sql_execute(arg0 : * mut u8, arg1 : usize,) { $($path_to_types)*::
-        _export_sql_execute_cabi::<$ty > (arg0, arg1) } #[export_name =
-        "read-encrypted-table"] unsafe extern "C" fn export_read_encrypted_table(arg0 : *
-        mut u8, arg1 : usize,) { $($path_to_types)*::
-        _export_read_encrypted_table_cabi::<$ty > (arg0, arg1) } #[export_name =
         "execute-table-encryption"] unsafe extern "C" fn
         export_execute_table_encryption(arg0 : * mut u8, arg1 : usize,) {
         $($path_to_types)*:: _export_execute_table_encryption_cabi::<$ty > (arg0, arg1) }
         #[export_name = "read-encrypted-data-per-user"] unsafe extern "C" fn
         export_read_encrypted_data_per_user(arg0 : * mut u8, arg1 : usize,) {
         $($path_to_types)*:: _export_read_encrypted_data_per_user_cabi::<$ty > (arg0,
-        arg1) } };
+        arg1) } #[export_name = "avg-age-for-male"] unsafe extern "C" fn
+        export_avg_age_for_male(arg0 : * mut u8, arg1 : usize,) { $($path_to_types)*::
+        _export_avg_age_for_male_cabi::<$ty > (arg0, arg1) } #[export_name =
+        "avg-age-for-female"] unsafe extern "C" fn export_avg_age_for_female(arg0 : * mut
+        u8, arg1 : usize,) { $($path_to_types)*:: _export_avg_age_for_female_cabi::<$ty >
+        (arg0, arg1) } };
     };
 }
 #[doc(hidden)]
@@ -168,15 +134,14 @@ pub(crate) use __export_klave_rust_postgre_template_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.36.0:component:klave-ai-rag:klave-rust-postgre-template:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 400] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xfe\x01\x01A\x02\x01\
-A\x0b\x01@\0\x01\0\x04\0\x0fregister-routes\x01\0\x01@\x01\x03cmds\x01\0\x04\0\x08\
-db-setup\x01\x01\x04\0\x0asql-delete\x01\x01\x04\0\x08sql-list\x01\x01\x04\0\x09\
-sql-query\x01\x01\x04\0\x0bsql-execute\x01\x01\x04\0\x14read-encrypted-table\x01\
-\x01\x04\0\x18execute-table-encryption\x01\x01\x04\0\x1cread-encrypted-data-per-\
-user\x01\x01\x04\02component:klave-ai-rag/klave-rust-postgre-template\x04\0\x0b!\
-\x01\0\x1bklave-rust-postgre-template\x03\0\0\0G\x09producers\x01\x0cprocessed-b\
-y\x02\x0dwit-component\x070.220.1\x10wit-bindgen-rust\x060.36.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 361] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xd7\x01\x01A\x02\x01\
+A\x08\x01@\0\x01\0\x04\0\x0fregister-routes\x01\0\x01@\x01\x03cmds\x01\0\x04\0\x08\
+db-setup\x01\x01\x04\0\x18execute-table-encryption\x01\x01\x04\0\x1cread-encrypt\
+ed-data-per-user\x01\x01\x04\0\x10avg-age-for-male\x01\x01\x04\0\x12avg-age-for-\
+female\x01\x01\x04\02component:klave-ai-rag/klave-rust-postgre-template\x04\0\x0b\
+!\x01\0\x1bklave-rust-postgre-template\x03\0\0\0G\x09producers\x01\x0cprocessed-\
+by\x02\x0dwit-component\x070.220.1\x10wit-bindgen-rust\x060.36.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
