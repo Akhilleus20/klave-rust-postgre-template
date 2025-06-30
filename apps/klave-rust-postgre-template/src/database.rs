@@ -33,6 +33,7 @@ pub struct DBTable {
     pub chunk_size: usize
 }
 
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReadEncryptedTableInput {
     pub database_id: String,
