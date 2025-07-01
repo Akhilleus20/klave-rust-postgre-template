@@ -341,7 +341,6 @@ impl Client {
     where
         T: for<'de> serde::Deserialize<'de>,
     {
-        klave::notifier::send_string(query);
         // Check client ID
         let client_id = utils::get_client_id();
         if client_id != self.client_id {
@@ -469,46 +468,6 @@ impl Client {
             }
         };
         Ok(())
-    }
-
-    fn get_table_properties(&self, table_name: &str) -> Result<Vec<Field>, Box<dyn std::error::Error>> {
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
-        let query = format!("SELECT * FROM {} LIMIT 1", table_name);
-
-        match self.query::<Vec<Vec<Value>>>(&query) {
-            Ok(response) => {
-                let fields: Vec<Field> = response.fields;
-                Ok(fields)
-            },
-            Err(err) => Err(err),
-        }
-    }
-
-    fn get_table_primary_key(&self, table_name: &str) -> Result<String, Box<dyn std::error::Error>> {
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
-        // Build the query to get the primary key column name
-        let query = format!("SELECT kcu.column_name FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public' AND tc.table_name = '{}' ORDER BY kcu.ordinal_position;", table_name);
-
-        match self.query::<String>(&query) {
-            Ok(response) => {
-                if response.fields.is_empty() {
-                    Err("No primary key found for the table".into())
-                } else {
-                    Ok(response.resultset.clone())
-                }
-            },
-            Err(err) => Err(err),
-        }
     }
 
     fn get_column_to_encrypt(&self, primary_key_field: &String, db_table: &DBTable, column: &String) -> Result<PostGreResponse<Vec<Vec<Value>>>, Box<dyn std::error::Error>> {

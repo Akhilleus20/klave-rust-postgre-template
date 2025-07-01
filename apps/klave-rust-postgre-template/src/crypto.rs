@@ -5,15 +5,6 @@ use crate::utils::get_serde_value_into_bytes;
 
 // AES-GCM constants
 pub const AES_GCM_IV_SIZE: usize = 12;      // 12 bytes (96 bits) - optimal for AES-GCM
-pub const AES_GCM_TAG_SIZE: u8 = 16;       // 16 bytes (128 bits) - maximum security
-pub const AES_GCM_TAG_HEX_SIZE: usize = 32;  // 16 bytes * 2 hex chars per byte
-pub const AES_GCM_NONCE_HEX_SIZE: usize = 24; // 12 bytes * 2 hex chars per byte
-
-// SHA-256 constants
-pub const SHA256_HEX_SIZE: usize = 64;  // 32 bytes * 2 hex chars per byte
-
-// ECC-256 constants
-pub const ECC256_PUBLIC_KEY_HEX_SIZE: usize = 128; // 64 bytes * 2 hex chars per byte
 
 
 pub fn generate_ecc_crypto_key() -> Result<CryptoKey, Box<dyn std::error::Error>> {
