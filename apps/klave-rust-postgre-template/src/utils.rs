@@ -1,15 +1,15 @@
 use serde_json::Value;
 
-pub fn get_client_id() -> String {
-    let client_id = match klave::context::get("sender") {
-            Ok(id) => id,
-            Err(e) => {
-                klave::notifier::send_string(&format!("Failed to get client ID: {}", e));
-                return String::new();
-            }
-        };
-    return client_id;
-}
+// pub fn get_client_id() -> String {
+//     let client_id = match klave::context::get("sender") {
+//             Ok(id) => id,
+//             Err(e) => {
+//                 klave::notifier::send_string(&format!("Failed to get client ID: {}", e));
+//                 return String::new();
+//             }
+//         };
+//     return client_id;
+// }
 
 pub fn get_serde_value_into_bytes(value: &serde_json::Value) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let bytes = match serde_json::to_vec(value) {

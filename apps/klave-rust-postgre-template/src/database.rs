@@ -2,7 +2,7 @@ use klave::{crypto::subtle::{save_key}};
 use serde_json::{self, Value};
 use serde::{Deserialize, Serialize};
 
-use crate::{crypto::{generate_ecc_crypto_key, encrypt_value}, utils::{self, flatten_vec_of_vec_values_to_single_string}};
+use crate::{crypto::{generate_ecc_crypto_key, encrypt_value}, utils::{flatten_vec_of_vec_values_to_single_string}};
 
 pub(crate) const DATABASE_CLIENT_TABLE: &str = "DatabaseClientTable";
 
@@ -155,7 +155,6 @@ pub struct Client {
     database_id: String,
     db_input_details: DBInputDetails,
     opaque_handle: String,
-    client_id: String,
     master_key_name: Option<String>, // Optional field for master key name
 }
 
@@ -213,15 +212,10 @@ impl Client {
                 String::new()
             }
         };
-        let client_id = utils::get_client_id();
-        if client_id.is_empty() {
-            klave::notifier::send_string("Client ID is empty, cannot create database client.");
-        }
         Self {
             database_id: database_id,
             db_input_details: db_input_details,
             opaque_handle: String::new(),
-            client_id: client_id,
             master_key_name: None,
         }
     }
@@ -235,15 +229,7 @@ impl Client {
         match klave::ledger::get_table(DATABASE_CLIENT_TABLE).get(&database_id) {
             Ok(v) => {
                 let pgsql_client: Client = match serde_json::from_slice::<Client>(&v) {
-                    Ok(w) => {
-                        // Check client ID
-                        let client_id = utils::get_client_id();
-                        if client_id != w.client_id {
-                            klave::notifier::send_string("ERROR: Client ID mismatch");
-                            return Err("Client ID mismatch".into());
-                        }
-                        w
-                    },
+                    Ok(w) => w,
                     Err(e) => {
                         klave::notifier::send_string(&format!("ERROR: failed to deserialize database Client: {}", e));
                         return Err(e.into());
@@ -282,12 +268,7 @@ impl Client {
 
     // Saves the Client instance to the ledger
     pub fn save(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
+
         // Save master key
         self.save_master_key()?;
         // Serialize the Client instance to JSON
@@ -314,12 +295,7 @@ impl Client {
     // Connects to the PostgreSQL database using the connection string
     // and stores the opaque handle for further operations.
     pub fn connect(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
+
         // Construct the PostgreSQL connection URI
         let uri = self.connection_string();
 
@@ -341,12 +317,7 @@ impl Client {
     where
         T: for<'de> serde::Deserialize<'de>,
     {
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
+
         match klave::sql::query(&self.opaque_handle, query) {
             Ok(result) => {
                 let response = match serde_json::from_str::<PostGreResponse<T>>(&result) {
@@ -367,12 +338,7 @@ impl Client {
 
     // Executes a SQL command on the PostgreSQL database, returns the result as a String.
     pub fn execute(&self, query: &str) -> Result<String, Box<dyn std::error::Error>> {
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
+
         match klave::sql::execute(&self.opaque_handle, query) {
             Ok(result) => Ok(result),
             Err(err) => {
@@ -384,13 +350,6 @@ impl Client {
 
     // Encrypts the specified columns in the given DBTable.
     pub fn encrypt_columns(&mut self, db_table: DBTable) -> Result<(), Box<dyn std::error::Error>> {
-
-        // Check client ID
-        let client_id = utils::get_client_id();
-        if client_id != self.client_id {
-            klave::notifier::send_string("ERROR: Client ID mismatch");
-            return Err("Client ID mismatch".into());
-        }
 
         //for each column name, I retrieve both primary key + data associated to the column to encrypt
         for column in db_table.columns.clone() {
